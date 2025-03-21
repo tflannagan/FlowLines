@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowLines | Ty</title>
+    <link rel="icon" type="image/png" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sankofa+Display&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Quicksand", sans-serif !important;
+            touch-action: none;
+        }
+
+        body {
+            background: #1a1a1a;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        .main-container {
+            width: 100%;
+            height: 100vh;
+            max-height: 96vh;
+            background: #2a2a2a;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            padding: 10px;
+            gap: 0px;
+            position: relative;
+        }
+
+        .simulation-container {
+            position: relative;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
+        }
+
+        #simulationCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            touch-action: none;
+        }
+        
+        .overlay {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #statsOverlay {
+            bottom: 10px;
+            left: 10px;
+        }
+        
+        .side-panel {
+            position: relative;
+            background: #222;
+            border-radius: 15px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+            width: 250px;
+            transition: all 0.3s ease;
+            overflow: visible;
+        }
+
+        .side-panel.collapsed {
+            width: 0;
+            padding: 0;
+            margin: 0;
+            gap: 0px;
+        }
+
+        .side-panel.collapsed .control-group,
+        .side-panel.collapsed .parameter-list,
+        .side-panel.collapsed .theme-selector {
+            display: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .side-panel.collapsed .toggle-panel {
+            right: calc(100% + 40px);
+        }
+
+        .side-panel.collapsed > * {
+            visibility: hidden;
+        }
+        
+        .toggle-panel {
+            position: absolute;
+            left: -40px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #2a2a2a;
+            border: none;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px 0 0 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            visibility: visible !important;
+        }
+
+        .side-panel.collapsed > *:not(.toggle-panel) {
+            display: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .toggle-panel:hover {
+            background: #333;
+        }
+
+        .toggle-panel svg {
+            transition: transform 0.3s ease;
+        }
+
+        .side-panel.collapsed .toggle-panel svg {
+            transform: rotate(180deg);
+        }
+        
+        .toggle-panel.collapsed {
+            transform: translateY(-50%) rotate(180deg);
+            border-radius: 0 5px 5px 0;
+        }
+
+        .action-button {
+            background: #2a2a2a;
+            border: none;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .action-button svg {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.2s ease;
+        }
+
+        .action-button:hover {
+            background: #333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .action-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .side-panel.collapsed .control-group {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .action-button {
+            background: #2a2a2a;
+            border: none;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            min-width: 44px;
+            min-height: 44px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        button {
+            font-family: "Sankofa Display", sans-serif;
+            font-size: 1rem;
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #1a1a3a;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            background-color: #00ffff;
+            color: #1a1a3a;
+        }
+        
+        .parameter-list {
+            background: #333;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .parameter-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .parameter-list::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        .parameter-list::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        
+        .action-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        
+        .action-row .action-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            background: #1a1a3a;
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .action-row .action-button:hover {
+            background: #00ffff;
+            color: #1a1a3a;
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-container label {
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .slider-container input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: #1a1a1a;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+        }
+
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 8px;
+            padding: 10px;
+            background: #333;
+            border-radius: 8px;
+            height: auto;
+            width: 100%;
+        }
+
+        .theme-option {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 4px;
+            background: #2a2a2a;
+        }
+
+        .theme-option:hover {
+            transform: scale(1.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .theme-option.selected {
+            border-color: #fff;
+        }
+        
+        .theme-option .color-preview {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 8px;
+                gap: 8px;
+            }
+
+            .side-panel {
+                position: fixed;
+                bottom: 10px;
+                right: 10px;
+                width: auto;
+                max-width: 250px;
+                height: auto;
+                max-height: 80vh;
+                z-index: 100;
+            }
+
+            .side-panel.collapsed {
+                transform: translateX(calc(100% + 20px));
+            }
+
+            .toggle-panel {
+                left: -35px;
+                padding: 8px;
+            }
+
+            .action-buttons {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .action-button {
+                flex: 1;
+                min-width: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="simulation-container">
+            <canvas id="simulationCanvas"></canvas>
+            <div id="statsOverlay" class="overlay">
+                Particles: <span id="particleCount">0</span> |
+                FPS: <span id="fpsCounter">0</span>
+            </div>
+        </div>
+        <div class="side-panel">
+            <button class="toggle-panel">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
+                    <path d="m321-80-71-71 329-329-329-329 71-71 400 400L321-80Z"/>
+                </svg>
+            </button>
+            <div class="control-group">
+                <div class="action-buttons">
+                    <button class="action-button" id="startStopBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
+                            <path d="M320-200v-560l440 280-440 280Z"/>
+                        </svg>
+                    </button>
+                    <button class="action-button" id="resetBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor">
+                            <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="control-group">
+                <div id="parameterList" class="parameter-list">
+                    <div class="slider-container">
+                        <label>Particle Count <span id="particleCountValue">100</span></label>
+                        <input type="range" id="particleCountSlider" min="100" max="2000" value="100" step="100">
+                    </div>
+                    <div class="slider-container">
+                        <label>Flow Speed <span id="flowSpeedValue">1.0</span></label>
+                        <input type="range" id="flowSpeedSlider" min="0.1" max="3" value="1.0" step="0.1">
+                    </div>
+                    <div class="slider-container">
+                        <label>Line Length <span id="lineLengthValue">25</span></label>
+                        <input type="range" id="lineLengthSlider" min="5" max="50" value="25" step="1">
+                    </div>
+                    <div class="slider-container">
+                        <label>Line Width <span id="lineWidthValue">1.8</span></label>
+                        <input type="range" id="lineWidthSlider" min="0.5" max="4" value="1.8" step="0.1">
+                    </div>
+                    <div class="slider-container">
+                        <label>Path Influence <span id="pathInfluenceValue">5.0</span></label>
+                        <input type="range" id="pathInfluenceSlider" min="0.5" max="10" value="5.0" step="0.5">
+                    </div>
+                    <div class="slider-container">
+                        <label>Interaction Strength <span id="interactionStrengthValue">4.5</span></label>
+                        <input type="range" id="interactionStrengthSlider" min="1" max="10" value="4.5" step="0.5">
+                    </div>
+                    <div class="slider-container">
+                        <label>Interaction Radius <span id="interactionRadiusValue">150</span></label>
+                        <input type="range" id="interactionRadiusSlider" min="50" max="300" value="150" step="10">
+                    </div>
+                    <div class="slider-container">
+                        <label>Path Duration <span id="pathDurationValue">5000</span></label>
+                        <input type="range" id="pathDurationSlider" min="1000" max="20000" value="5000" step="1000">
+                    </div>
+                    <div class="action-row">
+                        <button id="clearPathsBtn" class="action-button">Clear Paths</button>
+                    </div>
+                </div>
+            </div>
+            <div class="control-group">
+                <div id="themeSelector" class="theme-selector"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const particleCountDisplay = document.getElementById('particleCount');
+        const fpsCounter = document.getElementById('fpsCounter');
+        const particleCountSlider = document.getElementById('particleCountSlider');
+        const flowSpeedSlider = document.getElementById('flowSpeedSlider');
+        const lineLengthSlider = document.getElementById('lineLengthSlider');
+        const lineWidthSlider = document.getElementById('lineWidthSlider');
+        const interactionStrengthSlider = document.getElementById('interactionStrengthSlider');
+        const interactionRadiusSlider = document.getElementById('interactionRadiusSlider');
+
+        let isRunning = false;
+        let lastTime = 0;
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
+        let isMouseDown = false;
+        let mousePos = { x: 0, y: 0 };
+        let previousMousePos = { x: 0, y: 0 };
+        
+        const colorThemes = [
+            {name: 'Cosmic Aura', primary: '#6D38EF', secondary: '#FF7991', tertiary: '#38EFEF', accent: '#FFFFFF', background: '#0D0221'},
+            {name: 'Ethereal Flow', primary: '#C874FF', secondary: '#FF4365', tertiary: '#7A04EB', accent: '#E2E2FF', background: '#080010'},
+            {name: 'Astral Vision', primary: '#00EEFF', secondary: '#FF61DC', tertiary: '#B561FF', accent: '#FFFFFF', background: '#0E0730'},
+            {name: 'Vibrational Field', primary: '#5CFFB4', secondary: '#B672FF', tertiary: '#FF7272', accent: '#E9FFFD', background: '#071330'},
+            {name: 'Quantum Wave', primary: '#42E8FF', secondary: '#DA61FF', tertiary: '#FFCE3C', accent: '#FFFFFF', background: '#001C38'},
+            {name: 'Spiritual Current', primary: '#AE77FF', secondary: '#FF77A2', tertiary: '#77FFD1', accent: '#F0F8FF', background: '#1A062A'},
+            {name: 'Neural Network', primary: '#7FFF00', secondary: '#FF00D4', tertiary: '#00ADFF', accent: '#E6FFE6', background: '#000F0A'},
+            {name: 'Consciousness Pulse', primary: '#FF5E3C', secondary: '#3C93FF', tertiary: '#C33CFF', accent: '#FFF0F0', background: '#0F0A21'}
+        ];
+
+        let currentTheme = colorThemes[0];
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = 1;
+        offscreenCanvas.height = 1;
+        const offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+        
+        let imageCanvas = document.createElement('canvas');
+        let imageCtx = imageCanvas.getContext('2d');
+        let baseImage = new Image();
+        let flowImage = new Image();
+        let imageLoaded = false;
+        let flowImageLoaded = false;
+        
+        let particles = [];
+        let flowField = [];
+        let flowFieldSize = 200;
+        let flowFieldCols = 0;
+        let flowFieldRows = 0;
+        
+        let userInteractionPoints = [];
+        let userFlowPaths = [];
+        
+        let config = {
+            particleCount: 100,
+            flowSpeed: 1.0,
+            lineLength: 25,
+            lineWidth: 1.8,
+            interactionStrength: 4.5,
+            interactionRadius: 150,
+            fadeRate: 0.02,
+            colorVariation: 0.3,
+            baseOpacity: 0.7,
+            maxAge: 180,
+            noiseScale: 0.005,
+            verticalBias: 0.1,
+            pathDuration: 5000,
+            pathInfluence: 5.0
+        };
+        
+        class Particle {
+            constructor(x, y) {
+                this.init(x, y);
+            }
+            
+            init(x, y) {
+                if (x === undefined || y === undefined) {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() * canvas.height;
+                }
+                
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = 0.5 + Math.random() * 1.5;
+                this.life = 0;
+                this.maxLife = 50 + Math.random() * config.maxAge;
+                this.history = [];
+                this.historyLength = Math.floor(5 + Math.random() * config.lineLength);
+                this.color = this.getRandomColor();
+                this.width = 0.5 + Math.random() * config.lineWidth;
+                this.fadeRate = config.fadeRate * (0.7 + Math.random() * 0.6);
+                this.opacity = config.baseOpacity * (0.6 + Math.random() * 0.4);
+                this.noiseOffset = Math.random() * 1000;
+                
+                this.history.push({ x: this.x, y: this.y });
+            }
+            
+            getRandomColor() {
+                const colorBase = Math.random();
+                
+                if (colorBase < 0.1) {
+                    return currentTheme.accent;
+                } else if (colorBase < 0.33) {
+                    return chroma.mix(currentTheme.primary, currentTheme.secondary, Math.random()).hex();
+                } else if (colorBase < 0.66) {
+                    return chroma.mix(currentTheme.secondary, currentTheme.tertiary, Math.random()).hex();
+                } else {
+                    return chroma.mix(currentTheme.tertiary, currentTheme.primary, Math.random()).hex();
+                }
+            }
+            
+            update() {
+                this.life++;
+                
+                if (this.life >= this.maxLife) {
+                    this.init();
+                    return;
+                }
+                
+                const flow = this.sampleFlowField(this.x, this.y);
+                const speedMultiplier = config.flowSpeed * this.speed;
+                
+                let interactionForce = { x: 0, y: 0 };
+                if (userInteractionPoints.length > 0) {
+                    interactionForce = this.getInteractionForce();
+                }
+                
+                const flowStrength = Math.sqrt(flow.x * flow.x + flow.y * flow.y);
+                const interactionStrength = Math.sqrt(interactionForce.x * interactionForce.x + interactionForce.y * interactionForce.y);
+                
+                let vx, vy;
+                
+                if (flowStrength > 0.1) {
+                    vx = flow.x * 0.9 + interactionForce.x * 0.1;
+                    vy = flow.y * 0.9 + interactionForce.y * 0.1;
+                } else if (interactionStrength > 0) {
+                    vx = interactionForce.x;
+                    vy = interactionForce.y;
+                } else {
+                    vx = flow.x;
+                    vy = flow.y;
+                }
+                
+                const noise = Math.sin(this.noiseOffset + this.life * 0.01);
+                vy += noise * 0.02;
+                
+                this.vx = this.vx * 0.9 + vx * 0.1;
+                this.vy = this.vy * 0.9 + vy * 0.1;
+                
+                const len = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (len > 0) {
+                    this.vx /= len;
+                    this.vy /= len;
+                }
+                
+                let newX = this.x + this.vx * speedMultiplier;
+                let newY = this.y + this.vy * speedMultiplier;
+                
+                if (newX < 0) newX = canvas.width;
+                if (newX > canvas.width) newX = 0;
+                if (newY < 0) newY = canvas.height;
+                if (newY > canvas.height) newY = 0;
+                
+                if (!isNaN(newX) && !isNaN(newY) && 
+                    isFinite(newX) && isFinite(newY) && 
+                    Math.abs(newX - this.x) < 20 && 
+                    Math.abs(newY - this.y) < 20) {
+                    
+                    this.x = newX;
+                    this.y = newY;
+                    
+                    if (this.life % 2 === 0) {
+                        this.history.push({ x: this.x, y: this.y });
+                        if (this.history.length > this.historyLength) {
+                            this.history.shift();
+                        }
+                    }
+                } else {
+                    this.init();
+                }
+            }
+            
+            getFlowDirection() {
+                const flowForce = this.sampleFlowField(this.x, this.y);
+                const interactionForce = this.getInteractionForce();
+                
+                this.vx = flowForce.x + interactionForce.x;
+                this.vy = flowForce.y + interactionForce.y;
+                
+                const length = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (length > 0) {
+                    this.vx /= length;
+                    this.vy /= length;
+                }
+            }
+            
+            sampleFlowField(x, y) {
+                const col = Math.floor(x / flowFieldSize);
+                const row = Math.floor(y / flowFieldSize);
+                
+                if (col >= 0 && col < flowFieldCols && row >= 0 && row < flowFieldRows) {
+                    const index = row * flowFieldCols + col;
+                    if (index < flowField.length && flowField[index]) {
+                        return flowField[index];
+                    }
+                }
+                
+                return { x: 0, y: 0 };
+            }
+            
+            getInteractionForce() {
+                let forceX = 0;
+                let forceY = 0;
+                
+                for (const point of userInteractionPoints) {
+                    const dx = this.x - point.x;
+                    const dy = this.y - point.y;
+                    const distSq = dx * dx + dy * dy;
+                    
+                    if (distSq < config.interactionRadius * config.interactionRadius) {
+                        const dist = Math.sqrt(distSq);
+                        const strength = Math.min(1, (config.interactionRadius - dist) / config.interactionRadius);
+                        
+                        if (point.type === 'attract') {
+                            forceX -= dx / dist * strength * config.interactionStrength;
+                            forceY -= dy / dist * strength * config.interactionStrength;
+                        } else {
+                            forceX += dx / dist * strength * config.interactionStrength;
+                            forceY += dy / dist * strength * config.interactionStrength;
+                        }
+                    }
+                }
+                
+                return { x: forceX, y: forceY };
+            }
+            
+            draw() {
+                const histLen = this.history.length;
+                if (histLen < 2) return;
+                
+                const lifeRatio = this.life / this.maxLife;
+                const alpha = this.opacity * (1 - lifeRatio);
+                const baseColor = chroma(this.color);
+                
+                offscreenCtx.strokeStyle = baseColor.alpha(alpha * 0.9).hex();
+                offscreenCtx.lineWidth = this.width * (1 - lifeRatio * 0.3);
+                offscreenCtx.lineCap = 'round';
+                offscreenCtx.lineJoin = 'round';
+                
+                offscreenCtx.beginPath();
+                offscreenCtx.moveTo(this.history[0].x, this.history[0].y);
+                
+                for (let i = 1; i < histLen; i++) {
+                    const point = this.history[i];
+                    if (isNaN(point.x) || isNaN(point.y)) continue;
+                    offscreenCtx.lineTo(point.x, point.y);
+                }
+                
+                offscreenCtx.stroke();
+            }
+        }
+        
+        function createBaseImageDataURL() {
+            const dataURL = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAHgAoADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD2ejA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//Z";
+            return dataURL;
+        }
+        
+        function createFlowFieldImageDataURL() {
+            const dataURL = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAHgAoADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD2ejA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKADAowPSiigAwPSjA9KKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//Z";
+            return dataURL;
+        }
+        
+        function init() {
+            resizeCanvas();
+            
+            offscreenCanvas.width = canvas.width;
+            offscreenCanvas.height = canvas.height;
+            
+            initThemeSelector();
+            setupEventListeners();
+            createFlowField();
+            createParticles();
+            startSimulation();
+        }
+        
+        function createFlowField() {
+            if (!canvas.width || !canvas.height) return;
+            
+            flowFieldCols = Math.max(1, Math.ceil(canvas.width / flowFieldSize));
+            flowFieldRows = Math.max(1, Math.ceil(canvas.height / flowFieldSize));
+            
+            if (flowField.length !== flowFieldCols * flowFieldRows || !flowField[0]) {
+                flowField = new Array(flowFieldCols * flowFieldRows);
+            }
+            
+            const pathsToProcess = userFlowPaths.filter(path => path.points.length > 1);
+            const hasUserPaths = pathsToProcess.length > 0;
+            
+            for (let row = 0; row < flowFieldRows; row++) {
+                for (let col = 0; col < flowFieldCols; col++) {
+                    const index = row * flowFieldCols + col;
+                    
+                    if (flowField[index] && !hasUserPaths) continue;
+                    
+                    const x = col * flowFieldSize;
+                    const y = row * flowFieldSize;
+                    
+                    let fx = 0, fy = 0;
+                    let totalInfluence = 0;
+                    
+                    if (hasUserPaths) {
+                        for (const path of pathsToProcess) {
+                            if (!path.processedPoints) {
+                                path.processedPoints = [];
+                                for (let i = 0; i < path.points.length - 1; i++) {
+                                    const p1 = path.points[i];
+                                    const p2 = path.points[i + 1];
+                                    const dx = p2.x - p1.x;
+                                    const dy = p2.y - p1.y;
+                                    const len = Math.sqrt(dx * dx + dy * dy);
+                                    if (len > 0) {
+                                        path.processedPoints.push({
+                                            x1: p1.x, y1: p1.y,
+                                            x2: p2.x, y2: p2.y,
+                                            dirX: dx / len,
+                                            dirY: dy / len
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            let pathInfluenceApplied = false;
+                            const pathInfluenceRadius = path.radius * 1.5;
+                            
+                            for (const segment of path.processedPoints) {
+                                const dx1 = x - segment.x1;
+                                const dy1 = y - segment.y1;
+                                const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                                
+                                if (dist1 < pathInfluenceRadius) {
+                                    const lifeFactor = path.life / config.pathDuration;
+                                    const influence = Math.pow(1 - dist1 / pathInfluenceRadius, 2) * 
+                                                    path.strength * config.pathInfluence * lifeFactor;
+                                    
+                                    const nearestPointDistance = distToSegment(
+                                        x, y, 
+                                        segment.x1, segment.y1, 
+                                        segment.x2, segment.y2
+                                    );
+                                    
+                                    if (nearestPointDistance < path.radius * 0.5) {
+                                        fx += segment.dirX * influence * 1.5;
+                                        fy += segment.dirY * influence * 1.5;
+                                        totalInfluence += influence * 1.5;
+                                        pathInfluenceApplied = true;
+                                    } else {
+                                        fx += segment.dirX * influence;
+                                        fy += segment.dirY * influence;
+                                        totalInfluence += influence;
+                                        pathInfluenceApplied = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (totalInfluence === 0) {
+                        const normX = x / canvas.width;
+                        const normY = y / canvas.height;
+                        
+                        const angle = Math.sin(normX * 5 + normY * 3) * Math.PI + 
+                                    Math.cos(normX * 3 - normY * 5) * Math.PI * 0.5;
+                        
+                        fx = Math.cos(angle) * 0.05;
+                        fy = Math.sin(angle) * 0.05;
+                        
+                        fy += config.verticalBias;
+                    } else {
+                        fx /= totalInfluence;
+                        fy /= totalInfluence;
+                    }
+                    
+                    const len = Math.sqrt(fx * fx + fy * fy);
+                    if (len > 0) {
+                        fx /= len;
+                        fy /= len;
+                    }
+                    
+                    flowField[index] = { x: fx, y: fy };
+                }
+            }
+        }
+        
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq !== 0) {
+                param = dot / lenSq;
+            }
+            
+            let xx, yy;
+            
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+            
+            const dx = px - xx;
+            const dy = py - yy;
+            
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        function createParticles() {
+            particles = [];
+            
+            for (let i = 0; i < config.particleCount; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                
+                particles.push(new Particle(x, y));
+            }
+        }
+        
+        function updateParticles() {
+            particles.forEach(particle => particle.update());
+        }
+        
+        function updateUserInteractionPoints() {
+            let i = 0;
+            while (i < userInteractionPoints.length) {
+                userInteractionPoints[i].life--;
+                if (userInteractionPoints[i].life <= 0) {
+                    userInteractionPoints.splice(i, 1);
+                } else {
+                    i++;
+                }
+            }
+            
+            let needsFieldUpdate = false;
+            i = 0;
+            while (i < userFlowPaths.length) {
+                userFlowPaths[i].life--;
+                if (userFlowPaths[i].life <= 0) {
+                    userFlowPaths.splice(i, 1);
+                    needsFieldUpdate = true;
+                } else {
+                    i++;
+                }
+            }
+            
+            if (needsFieldUpdate && frameCount % 30 === 0) {
+                createFlowField();
+            }
+        }
+        
+        function draw() {
+            if (!canvas.width || !canvas.height || !offscreenCanvas.width || !offscreenCanvas.height) {
+                resizeCanvas();
+                return;
+            }
+            
+            offscreenCtx.globalCompositeOperation = 'source-over';
+            offscreenCtx.fillStyle = currentTheme.background;
+            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            
+            drawUserPaths();
+            
+            particles.forEach(particle => particle.draw());
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+            
+            if (offscreenCanvas.width > 0 && offscreenCanvas.height > 0) {
+                ctx.drawImage(offscreenCanvas, 0, 0);
+            }
+            
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastFpsUpdate > 1000) {
+                const fps = Math.round((frameCount * 1000) / (currentTime - lastFpsUpdate));
+                fpsCounter.textContent = fps;
+                frameCount = 0;
+                lastFpsUpdate = currentTime;
+                particleCountDisplay.textContent = particles.length;
+            }
+        }
+        
+        function drawUserPaths() {
+            if (userFlowPaths.length === 0) return;
+            
+            offscreenCtx.save();
+            offscreenCtx.globalAlpha = 0.2;
+            
+            for (const path of userFlowPaths) {
+                if (path.points.length < 2) continue;
+                
+                offscreenCtx.strokeStyle = path.color;
+                offscreenCtx.lineWidth = 0.001 * path.strength;
+                offscreenCtx.lineCap = 'round';
+                offscreenCtx.lineJoin = 'round';
+                
+                offscreenCtx.beginPath();
+                offscreenCtx.moveTo(path.points[0].x, path.points[0].y);
+                
+                for (let i = 1; i < path.points.length; i++) {
+                    offscreenCtx.lineTo(path.points[i].x, path.points[i].y);
+                }
+                
+                offscreenCtx.stroke();
+            }
+            
+            offscreenCtx.restore();
+        }
+        
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+            lastTime = timestamp;
+            
+            try {
+                updateParticles();
+                updateUserInteractionPoints();
+                draw();
+            } catch (e) {
+                console.error("Error in animation loop:", e);
+            }
+            
+            if (isRunning) requestAnimationFrame(gameLoop);
+        }
+        
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = Math.max(1, container.clientWidth);
+            canvas.height = Math.max(1, container.clientHeight);
+            offscreenCanvas.width = Math.max(1, canvas.width);
+            offscreenCanvas.height = Math.max(1, canvas.height);
+            
+            createFlowField();
+        }
+        
+        function initSimulation() {
+            createFlowField();
+            createParticles();
+            startSimulation();
+        }
+        
+        function startSimulation() {
+            if (!isRunning) {
+                isRunning = true;
+                lastTime = 0;
+                startStopBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M520-200h80v-560h-80v560Zm-160 0h80v-560h-80v560Z"/></svg>';
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function stopSimulation() {
+            isRunning = false;
+            startStopBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M320-200v-560l440 280-440 280Z"/></svg>';
+        }
+        
+        function resetSimulation() {
+            userFlowPaths = [];
+            createFlowField();
+            createParticles();
+            userInteractionPoints = [];
+            
+            if (!isRunning) {
+                startSimulation();
+            }
+        }
+        
+        function initThemeSelector() {
+            const themeSelector = document.getElementById('themeSelector');
+            themeSelector.innerHTML = '';
+            
+            colorThemes.forEach((theme, index) => {
+                const themeOption = document.createElement('div');
+                themeOption.className = 'theme-option';
+                themeOption.style.backgroundColor = theme.background;
+                
+                const previewContainer = document.createElement('div');
+                previewContainer.style.display = 'flex';
+                previewContainer.style.gap = '2px';
+                previewContainer.style.flexWrap = 'nowrap';
+                
+                [theme.primary, theme.secondary, theme.tertiary].forEach(color => {
+                    const preview = document.createElement('div');
+                    preview.className = 'color-preview';
+                    preview.style.backgroundColor = color;
+                    previewContainer.appendChild(preview);
+                });
+                
+                themeOption.appendChild(previewContainer);
+                if (theme === currentTheme) themeOption.classList.add('selected');
+                themeOption.addEventListener('click', () => selectTheme(index));
+                themeSelector.appendChild(themeOption);
+            });
+        }
+        
+        function selectTheme(index) {
+            currentTheme = colorThemes[index];
+            updateSelectedTheme();
+            
+            particles.forEach(particle => {
+                particle.color = particle.getRandomColor();
+            });
+        }
+        
+        function updateSelectedTheme() {
+            const themeOptions = document.querySelectorAll('.theme-option');
+            themeOptions.forEach((option, index) => {
+                option.classList.toggle('selected', colorThemes[index] === currentTheme);
+            });
+        }
+        
+        function setupEventListeners() {
+            startStopBtn.addEventListener('click', () => {
+                if (isRunning) {
+                    stopSimulation();
+                } else {
+                    startSimulation();
+                }
+            });
+            
+            resetBtn.addEventListener('click', () => {
+                resetBtn.style.transform = 'scale(0.95)';
+                setTimeout(() => resetBtn.style.transform = 'scale(1)', 100);
+                resetSimulation();
+            });
+            
+            document.getElementById('clearPathsBtn').addEventListener('click', () => {
+                userFlowPaths = [];
+                createFlowField();
+            });
+            
+            let currentPath = null;
+            let throttleTimer = null;
+            
+            const throttle = (callback, delay) => {
+                if (throttleTimer) return;
+                throttleTimer = setTimeout(() => {
+                    callback();
+                    throttleTimer = null;
+                }, delay);
+            };
+            
+            canvas.addEventListener('mousedown', (event) => {
+                isMouseDown = true;
+                const rect = canvas.getBoundingClientRect();
+                mousePos = {
+                    x: (event.clientX - rect.left) * (canvas.width / rect.width),
+                    y: (event.clientY - rect.top) * (canvas.height / rect.height)
+                };
+                previousMousePos = { ...mousePos };
+                
+                if (event.button === 0) {
+                    const pathColor = event.shiftKey ? currentTheme.accent : currentTheme.primary;
+                    const strength = event.shiftKey ? 1.5 : 1.0;
+                    
+                    currentPath = {
+                        points: [{ x: mousePos.x, y: mousePos.y }],
+                        color: pathColor,
+                        strength: strength,
+                        radius: config.interactionRadius * (event.shiftKey ? 1.5 : 1.0),
+                        life: config.pathDuration
+                    };
+                    
+                    userFlowPaths.push(currentPath);
+                }
+                
+                userInteractionPoints.push({
+                    x: mousePos.x,
+                    y: mousePos.y,
+                    type: event.button === 0 ? 'attract' : 'repel',
+                    life: 100
+                });
+                
+                if (event.button === 0 && event.ctrlKey) {
+                    createBurst(mousePos.x, mousePos.y, 20, currentTheme.accent);
+                }
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isMouseDown = false;
+                if (currentPath) {
+                    throttle(() => {
+                        createFlowField();
+                        currentPath = null;
+                    }, 50);
+                }
+            });
+            
+            canvas.addEventListener('mousemove', (event) => {
+                if (!isMouseDown) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                mousePos = {
+                    x: (event.clientX - rect.left) * (canvas.width / rect.width),
+                    y: (event.clientY - rect.top) * (canvas.height / rect.height)
+                };
+                
+                const dist = Math.sqrt(
+                    Math.pow(mousePos.x - previousMousePos.x, 2) +
+                    Math.pow(mousePos.y - previousMousePos.y, 2)
+                );
+                
+                if (dist > 5) {
+                    userInteractionPoints.push({
+                        x: mousePos.x,
+                        y: mousePos.y,
+                        type: event.buttons === 1 ? 'attract' : 'repel',
+                        life: 100
+                    });
+                    
+                    if (currentPath && event.buttons === 1) {
+                        currentPath.points.push({ x: mousePos.x, y: mousePos.y });
+                        
+                        throttle(() => createFlowField(), 100);
+                    }
+                    
+                    previousMousePos = { ...mousePos };
+                    
+                    if (event.buttons === 1 && event.ctrlKey) {
+                        createBurst(mousePos.x, mousePos.y, 5, currentTheme.accent);
+                    }
+                }
+            });
+            
+            let touchPath = null;
+            
+            canvas.addEventListener('touchstart', (event) => {
+                event.preventDefault();
+                isMouseDown = true;
+                const rect = canvas.getBoundingClientRect();
+                const touch = event.touches[0];
+                mousePos = {
+                    x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+                    y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+                };
+                previousMousePos = { ...mousePos };
+                
+                touchPath = {
+                    points: [{ x: mousePos.x, y: mousePos.y }],
+                    color: event.touches.length > 1 ? currentTheme.accent : currentTheme.primary,
+                    strength: event.touches.length > 1 ? 1.5 : 1.0,
+                    radius: config.interactionRadius * (event.touches.length > 1 ? 1.5 : 1.0),
+                    life: config.pathDuration
+                };
+                
+                userFlowPaths.push(touchPath);
+                
+                userInteractionPoints.push({
+                    x: mousePos.x,
+                    y: mousePos.y,
+                    type: 'attract',
+                    life: 100
+                });
+                
+                if (event.touches.length > 1) {
+                    createBurst(mousePos.x, mousePos.y, 20, currentTheme.accent);
+                }
+            });
+            
+            canvas.addEventListener('touchend', () => {
+                isMouseDown = false;
+                if (touchPath) {
+                    throttle(() => {
+                        createFlowField();
+                        touchPath = null;
+                    }, 50);
+                }
+            });
+            
+            canvas.addEventListener('touchmove', (event) => {
+                if (!isMouseDown) return;
+                event.preventDefault();
+                
+                const rect = canvas.getBoundingClientRect();
+                const touch = event.touches[0];
+                mousePos = {
+                    x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+                    y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+                };
+                
+                const dist = Math.sqrt(
+                    Math.pow(mousePos.x - previousMousePos.x, 2) +
+                    Math.pow(mousePos.y - previousMousePos.y, 2)
+                );
+                
+                if (dist > 5) {
+                    userInteractionPoints.push({
+                        x: mousePos.x,
+                        y: mousePos.y,
+                        type: 'attract',
+                        life: 100
+                    });
+                    
+                    if (touchPath) {
+                        touchPath.points.push({ x: mousePos.x, y: mousePos.y });
+                        
+                        throttle(() => createFlowField(), 100);
+                    }
+                    
+                    previousMousePos = { ...mousePos };
+                    
+                    if (event.touches.length > 1) {
+                        createBurst(mousePos.x, mousePos.y, 5, currentTheme.accent);
+                    }
+                }
+            });
+            
+            canvas.addEventListener('dblclick', (event) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+                createBurst(x, y, 30, currentTheme.accent);
+            });
+            
+            const updateSliderValue = (slider, valueSpan) => {
+                slider.addEventListener('input', () => {
+                    valueSpan.textContent = slider.value;
+                    config[slider.id.replace('Slider', '')] = parseFloat(slider.value);
+                    
+                    if (slider.id === 'particleCountSlider') {
+                        throttle(() => {
+                            const currentCount = particles.length;
+                            const targetCount = config.particleCount;
+                            
+                            if (currentCount < targetCount) {
+                                const newParticles = [];
+                                for (let i = currentCount; i < targetCount; i++) {
+                                    newParticles.push(new Particle());
+                                }
+                                particles = particles.concat(newParticles);
+                            } else if (currentCount > targetCount) {
+                                particles = particles.slice(0, targetCount);
+                            }
+                        }, 200);
+                    }
+                    
+                    if (slider.id === 'pathInfluenceSlider') {
+                        createFlowField();
+                    }
+                });
+            };
+            
+            updateSliderValue(particleCountSlider, document.getElementById('particleCountValue'));
+            updateSliderValue(flowSpeedSlider, document.getElementById('flowSpeedValue'));
+            updateSliderValue(lineLengthSlider, document.getElementById('lineLengthValue'));
+            updateSliderValue(lineWidthSlider, document.getElementById('lineWidthValue'));
+            updateSliderValue(document.getElementById('pathInfluenceSlider'), document.getElementById('pathInfluenceValue'));
+            updateSliderValue(interactionStrengthSlider, document.getElementById('interactionStrengthValue'));
+            updateSliderValue(interactionRadiusSlider, document.getElementById('interactionRadiusValue'));
+            updateSliderValue(document.getElementById('pathDurationSlider'), document.getElementById('pathDurationValue'));
+            
+            const togglePanel = document.querySelector('.toggle-panel');
+            
+            togglePanel.addEventListener('click', () => {
+                const sidePanel = document.querySelector('.side-panel');
+                sidePanel.classList.toggle('collapsed');
+                const svg = togglePanel.querySelector('svg');
+                svg.style.transform = sidePanel.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+                updatePanelVisibility();
+            });
+            
+            window.addEventListener('resize', resizeCanvas);
+        }
+        
+        function createBurst(x, y, count, color) {
+            const actualCount = Math.min(count, 30);
+            const baseColor = color || currentTheme.primary;
+            for (let i = 0; i < actualCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 20;
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance;
+                
+                const particle = new Particle(x + dx, y + dy);
+                particle.color = chroma.mix(baseColor, chroma(baseColor).brighten(2), Math.random()).hex();
+                particle.width = 1 + Math.random() * config.lineWidth * 1.5;
+                particle.opacity = 0.7 + Math.random() * 0.3;
+                particles.push(particle);
+                
+                if (particles.length > config.particleCount * 1.2) {
+                    particles = particles.slice(particles.length - config.particleCount);
+                }
+            }
+        }
+        
+        function updatePanelVisibility() {
+            const sidePanel = document.querySelector('.side-panel');
+            const isCollapsed = sidePanel.classList.contains('collapsed');
+            const controls = document.querySelectorAll('.control-group, .parameter-list, .theme-selector');
+            const isMobile = window.innerWidth <= 768;
+            
+            sidePanel.style.width = isCollapsed ? '0' : '250px';
+            sidePanel.style.padding = isCollapsed ? '0' : '10px';
+            
+            controls.forEach(element => {
+                element.style.display = isCollapsed ? 'none' : 
+                    (element.classList.contains('theme-selector') ? 'grid' : 'flex');
+                element.style.opacity = isCollapsed ? '0' : '1';
+                element.style.pointerEvents = isCollapsed ? 'none' : 'all';
+            });
+            
+            if (isMobile) {
+                Object.assign(sidePanel.style, {
+                    position: 'fixed',
+                    right: '10px',
+                    bottom: '10px',
+                    top: 'auto'
+                });
+            } else {
+                Object.assign(sidePanel.style, {
+                    position: 'relative',
+                    right: '0',
+                    top: '0',
+                    bottom: '0'
+                });
+            }
+            
+            setTimeout(resizeCanvas, 50);
+        }
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
